@@ -10,10 +10,18 @@
   "license": "ISC",
   "dependencies": {
     "@google-cloud/vision": "^1.9.0",
+    "cli-progress": "^3.6.0",
+    "colors": "^1.4.0",
+    "crawler": "^1.2.1",
+    "download-file": "^0.1.5",
+    "gm": "^1.23.1",
+    "image-size": "^0.8.3",
     "natural": "^0.6.3",
+    "node-wifi": "^2.0.12",
     "path": "^0.12.7",
     "redis": "^3.0.2",
     "redis-server": "^1.2.2",
+    "request": "^2.88.2",
     "util": "^0.12.1"
   }
 }

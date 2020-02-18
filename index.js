@@ -6,7 +6,39 @@ const { promisify } = require('util')
 const vision = require('@google-cloud/vision')
 const natural = require('natural')
 const redis = require('redis')
+const colors = require('colors/safe')
+const cliProgress = require('cli-progress')
+// create a new progress bar instance and use shades_classic theme
+const bar1 = new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic)
+const wifi = require('node-wifi')
+const download = require('download-file')
+const url = 'http://10.10.1.1/:sda1/DCIM/100MEDIA'
+const Crawler = require('crawler')
+const urlmodule = require('url')
+const http = require('http')
+const gm = require('gm')
+const sizeOf = require('image-size')
 
+var crawl = new Crawler({
+  maxConnections: 20,
+  // This will be called for each crawled page
+  callback: function(error, res, done) {
+    if (error) {
+      console.log(error)
+      wifi.connect({ ssid: 'SFR_C4A0', password: 'r5antrymaggiumbutrid' }, (err) => {
+        if (err) {
+          console.log(err)
+        }
+        console.log(colors.cyan('Error: Re-Synchronize with Local Wifi...')) // outputs green text
+      })
+    } else {
+      var $ = res.$
+      // $ is Cheerio by default
+      //a lean implementation of core jQuery designed specifically for the server
+    }
+    done()
+  },
+})
 const readFile = promisify(fs.readFile)
 const stat = promisify(fs.stat)
 const readdir = promisify(fs.readdir)
@@ -264,6 +296,11 @@ async function main(inputDir) {
   index.quit()
 }
 
+/**
+ *
+ * Go Detect Console
+ *
+ */
 const usage = 'Usage: node textDetection <command> <arg> ... \n\n  Commands: analyze, lookup'
 if (process.argv.length < 3) {
   throw new Error(usage)
@@ -275,6 +312,95 @@ if (command === 'analyze') {
     throw new Error('Usage: node textDetection analyze <dir>')
   }
   main(args[0]).catch(console.error)
+} else if (command === 'synchronize') {
+  wifi.init({
+    iface: null, // network interface, choose a random wifi interface if set to null
+  })
+  console.log(colors.white('Go Synchronize...')) // outputs green text
+
+  wifi.connect({ ssid: 'IRIScanBook-5300b539', password: '12345678' }, (err) => {
+    if (err) {
+      console.log(err)
+    }
+    console.log(colors.yellow('Synchronize with IrisScan...')) // outputs green text
+
+    crawl.queue([
+      {
+        uri: `http://10.10.1.1/:sda1/DCIM/100MEDIA`,
+        jQuery: true,
+        // The global callback won't be called
+        callback: function(error, res, done) {
+          if (error) {
+            console.log(error)
+          } else {
+            var $ = res.$
+            console.log('Grabbed', res.body.length, 'bytes')
+            // console.log('Body Crawled', res.body)
+            let links = $('table#middle tr td:contains(IMA)')
+            let list = []
+            links.find('a').each((index, element) => {
+              list.push($(element).attr('href'))
+            })
+            console.dir(list)
+
+            list.forEach((link) => {
+              var parsed = urlmodule.parse(link)
+              const file = fs.createWriteStream(`images/${path.basename(parsed.pathname)}`)
+              console.log(`${url}${link}`)
+              //10.10.1.1/sda1/DCIM/100MEDIA/IMAG0002.JPG
+
+              http: http.get(`http://10.10.1.1${link}`, (response) => {
+                var chunks = []
+
+                response.pipe(file)
+                response
+                  .on('data', function(chunk) {
+                    chunks.push(chunk)
+                  })
+                  .on('end', function() {
+                    //response.pipe(file)
+                  })
+
+                file.on('finish', function() {
+                  var buffer = Buffer.concat(chunks)
+                  let sizes = sizeOf(buffer)
+                  console.log(sizes)
+                  if (sizes.width > 1000 && sizes.height > 1000) {
+                    //response.pipe(file)
+                    console.log('laaa')
+                  }
+
+                  file.close()
+                })
+              })
+            })
+          }
+          wifi.connect({ ssid: 'SFR_C4A0', password: 'r5antrymaggiumbutrid' }, (err) => {
+            if (err) {
+              console.log(err)
+            }
+            console.log(colors.cyan('Re-Synchronize with Local Wifi...')) // outputs green text
+          })
+
+          done()
+        },
+      },
+    ])
+  })
+
+  //   let progress = 0
+  //   // start the progress bar with a total value of 200 and start value of 0
+  //   bar1.start(200, progress)
+
+  //   let refreshIntervalId = setInterval(() => {
+  //     if (progress < 200) {
+  //       progress += 10
+  //       bar1.update(progress)
+  //     } else {
+  //       bar1.stop()
+  //       clearInterval(refreshIntervalId)
+  //     }
+  //   }, 100)
 } else if (command === 'lookup') {
   if (!args.length) {
     throw new Error('Usage: node textDetection lookup <word> ...')
